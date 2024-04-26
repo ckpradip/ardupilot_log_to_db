@@ -1,0 +1,135 @@
+import re
+import json
+
+from pymavlink import mavutil
+
+from dbtest import *
+from database import create_connection, close_connection
+
+
+def read_all_and_update_db(log_folder_path):
+    print("read_all_and_update_db started")
+
+    # Connect to database table
+    conn = create_connection()
+    ret_val = create_tables(conn)
+
+    if not ret_val:
+        print("Error in creating table")
+        return
+    
+    count = 0
+
+    mlog = mavutil.mavlink_connection(log_folder_path)
+
+    while True:
+        try:
+            # Get the type of the message
+            msg = mlog.recv_msg()
+            
+            # Get the content of the message
+            log_content = msg.__dict__
+                
+            match msg.get_type():
+                case None:
+                    break
+                case 'FMT':
+                    ret_val = insert_FMT_data_record(conn, msg.Type, msg.Length, msg.Name, msg.Format, msg.Columns)
+                    x=0
+                case 'PARM':
+                    ret_val = insert_PARM_data_record(conn, msg.TimeUS, msg.Name, msg.Value, msg.Default)
+                case 'IMU':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.GyrX, msg.GyrY, msg.GyrZ, msg.AccX, msg.AccY, msg.AccZ, msg.EG, msg.EA, msg.T, msg.GH, msg.AH, msg.GHz, msg.AHz)
+                case 'RATE':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.RDes, msg.R , msg.ROut, msg.PDes, msg.P , msg.POut, msg.YDes, msg.Y , msg.YOut, msg.ADes, msg.A , msg.AOut)
+                case'ATSC':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.AngPScX, msg.AngPScY, msg.AngPScZ)
+                case 'FMTU':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.FmtType, msg.UnitIds, msg.MultIds)
+                case 'CTRL':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.RMSRollP, msg.RMSRollD, msg.RMSPitchP, msg.RMSPitchD, msg.RMSYaw)
+                case 'MOTB':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.LiftMax, msg.BatVolt, msg.ThLimit, msg.ThrAvMx, msg.FailFlags)
+                case 'QTUN':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.ThI, msg.ABst, msg.ThO, msg.ThH, msg.DAlt, msg.Alt, msg.BAlt, msg.DCRt, msg.CRt, msg.TMix, msg.Sscl, msg.Trn, msg.Ast)
+                case 'PSCN':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.TPN, msg.PN, msg.DVN, msg.TVN, msg.VN, msg.DAN, msg.TAN, msg.AN)
+                case 'PSCE':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.TPE, msg.PE, msg.DVE, msg.TVE, msg.VE, msg.DAE, msg.TAE, msg.AE)
+                case 'ESC':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Instance, msg.RPM, msg.RawRPM, msg.Volt, msg.Curr, msg.Temp, msg.CTot, msg.MotTemp, msg.Err)
+                case 'GPS':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.I, msg.Status, msg.GMS, msg.GWk, msg.NSats, msg.HDop, msg.Lat, msg.Lng, msg.Alt, msg.Spd, msg.GCrs, msg.VZ, msg.Yaw, msg.U)
+                case 'GPA':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.I, msg.VDop, msg.HAcc, msg.VAcc, msg.SAcc, msg.YAcc, msg.VV, msg.SMS, msg.Delta, msg.Und)
+                case 'RFND':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Instance, msg.Dist, msg.Stat, msg.Orient)
+                case 'ATT':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.DesRoll, msg.Roll, msg.DesPitch, msg.Pitch, msg.DesYaw, msg.Yaw, msg.ErrRP, msg.ErrYaw, msg.AEKF)
+                case 'PIQR':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'PIQP':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'PIQY':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'PIQA':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'PIDN':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'PIDE':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'PIDR':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'PIDP':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'PIDY':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'PIDS':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.Tar, msg.Act, msg.Err, msg.P, msg.I, msg.D, msg.FF, msg.Dmod, msg.SRate, msg.Limit)
+                case 'XKF1':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.C, msg.Roll, msg.Pitch, msg.Yaw, msg.VN, msg.VE, msg.VD, msg.dPD, msg.PN, msg.PE, msg.PD, msg.GX, msg.GY, msg.GZ, msg.OH)
+                case 'XKF2':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.C, msg.AX, msg.AY, msg.AZ, msg.VWN, msg.VWE, msg.MN, msg.ME, msg.MD, msg.MX, msg.MY, msg.MZ, msg.IDX, msg.IDY, msg.IS)
+                case 'XKF3':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.C, msg.IVN, msg.IVE, msg.IVD, msg.IPN, msg.IPE, msg.IPD, msg.IMX, msg.IMY, msg.IMZ, msg.IYAW, msg.IVT, msg.RErr, msg.ErSc)
+                case 'XKF4':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.C, msg.SV, msg.SP, msg.SH, msg.SM, msg.SVT, msg.errRP, msg.OFN, msg.OFE, msg.FS, msg.TS, msg.SS, msg.GPS, msg.PI)
+                case 'XKF5':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.C, msg.NI, msg.FIX, msg.FIY, msg.AFI, msg.HAGL, msg.offset, msg.RI, msg.rng, msg.Herr, msg.eAng, msg.eVel, msg.ePos)
+                case 'XKFS':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.C, msg.MI, msg.BI, msg.GI, msg.AI, msg.SS)
+                case 'XKQ':
+                    ret_val = insert_DATA_record(conn, msg.get_type(), msg.TimeUS, msg.C, msg.Q1, msg.Q2, msg.Q3, msg.Q4)
+# XKV1 {TimeUS : 1038671630, C : 2, V00 : 3.4979461815964896e-06, V01 : 6.0946904341108166e-06, V02 : 5.400434474722715e-06, V03 : 0.00032466225093230605, V04 : 0.013638895936310291, V05 : 0.01368650235235691, V06 : 0.007555926218628883, V07 : 0.04070322960615158, V08 : 0.04075516387820244, V09 : 0.06334635615348816, V10 : 4.032996506198039e-11, V11 : 3.897268965880052e-11}
+# XKV2 {TimeUS : 1038671630, C : 2, V12 : 1.1773698682659983e-10, V13 : 4.575138063955819e-07, V14 : 4.88008822685515e-07, V15 : 2.364435580659574e-08, V16 : 0.0, V17 : 0.0, V18 : 0.0, V19 : 0.0, V20 : 0.0, V21 : 0.0, V22 : 0.0, V23 : 0.0}
+# AHR2 {TimeUS : 1038673438, Roll : 3.93, Pitch : -6.59, Yaw : 12.280000000000001, Alt : 586.1900024414062, Lat : -35.2824595, Lng : 149.0071516, Q1 : 0.9918187260627747, Q2 : 0.04023784399032593, Q3 : -0.053497906774282455, Q4 : 0.10869438201189041}
+# POS {TimeUS : 1038673447, Lat : -35.282460199999996, Lng : 149.0071634, Alt : 586.1300048828125, RelHomeAlt : 0.012456534430384636, RelOriginAlt : 0.7824565172195435}
+# CTUN {TimeUS : 1038673456, NavRoll : 0.0, Roll : 3.92, NavPitch : 0.0, Pitch : -6.26, ThO : 0.0, RdrOut : 8.0, ThD : 0.0, As : 1.7785789966583252, SAs : 1.8942416906356812, E2T : 1.064620852470398, GU : 798}     
+# FTN {TimeUS : 1038673460, I : 0, NDn : 4, NF1 : 60.0, NF2 : 60.0, NF3 : 60.0, NF4 : 60.0, NF5 : 0.0, NF6 : 0.0, NF7 : 0.0, NF8 : 0.0, NF9 : 0.0, NF10 : 0.0, NF11 : 0.0, NF12 : 0.0}
+# FTN {TimeUS : 1038673541, I : 1, NDn : 1, NF1 : 35.0, NF2 : 0.0, NF3 : 0.0, NF4 : 0.0, NF5 : 0.0, NF6 : 0.0, NF7 : 0.0, NF8 : 0.0, NF9 : 0.0, NF10 : 0.0, NF11 : 0.0, NF12 : 0.0}
+# NTUN {TimeUS : 1038673551, Dist : 1.199054479598999, TBrg : 0.0, NavBrg : 0.0, AltE : -1.7, XT : 0.0, XTi : 0.0, AsE : -1.7785789966583252, TLat : -35.282468, TLng : 149.0071725, TAW : 584.35, TAT : 0.0, TAsp : 26.0}
+# RCIN {TimeUS : 1038673558, C1 : 1503, C2 : 1505, C3 : 1000, C4 : 1500, C5 : 1296, C6 : 990, C7 : 990, C8 : 990, C9 : 875, C10 : 875, C11 : 875, C12 : 875, C13 : 875, C14 : 875}
+# RCI2 {TimeUS : 1038673563, C15 : 875, C16 : 875, OMask : 0}
+# RCOU {TimeUS : 1038673567, C1 : 1002, C2 : 1002, C3 : 1002, C4 : 1002, C5 : 980, C6 : 1878, C7 : 1500, C8 : 0, C9 : 200, C10 : 1358, C11 : 1877, C12 : 0, C13 : 0, C14 : 0}
+# RCO2 {TimeUS : 1038673572, C15 : 0, C16 : 0, C17 : 0, C18 : 0}
+# AETR {TimeUS : 1038673579, Ail : -1284.8719482421875, Elev : 3397.72998046875, Thr : 0.0, Rudd : 8.0, Flap : 0.0, SS : 2.0}
+# VIBE {TimeUS : 1038673584, IMU : 0, VibeX : 0.016089845448732376, VibeY : 0.019336141645908356, VibeZ : 0.023252522572875023, Clip : 0}
+# VIBE {TimeUS : 1038673584, IMU : 1, VibeX : 0.032548688352108, VibeY : 0.02885361760854721, VibeZ : 0.03030518628656864, Clip : 0}
+                case _:
+                    # Debug only
+                    print(msg)
+                    if count > 15:
+                        break
+                    count += 1
+
+            if not ret_val:
+                print("Error in inserting data : " + msg.get_type())
+                break
+        except Exception as e:
+            print("Error: ", e)
+            break
+    
+    close_connection(conn)
+    
+    print("read_all_and_update_db ended")
+
