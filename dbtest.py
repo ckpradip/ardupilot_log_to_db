@@ -103,7 +103,7 @@ def create_DATA_table(conn):
                   CREATE TABLE IF NOT EXISTS DATA(
                   ID INTEGER PRIMARY KEY AUTOINCREMENT,
                   ATTR TEXT NOT NULL,
-                  TIMEUS INT NOT NULL,
+                  TIMEUS INT,
                   VALUE1 TEXT,
                   VALUE2 TEXT,
                   VALUE3 TEXT,
@@ -125,8 +125,7 @@ def create_DATA_table(conn):
         logger.info("done")
         return True
     except Error as e:
-        print(e)
-        logger.debug()
+        logger.debug(e)
         return False
 
 def insert_DATA_record(conn, Attr, Time, Value1=None, Value2=None, Value3=None, Value4=None, Value5=None, Value6=None, Value7=None, Value8=None, Value9=None, Value10=None, Value11=None, Value12=None, Value13=None, Value14=None, Value15=None, Value16=None):
@@ -137,8 +136,7 @@ def insert_DATA_record(conn, Attr, Time, Value1=None, Value2=None, Value3=None, 
         logger.info('db record : ' + Attr)
         return True
     except Error as e:
-        print(e)
-        logger.debug()
+        logger.debug(e)
         conn.commit()
         return False
     
